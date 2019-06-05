@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Shader">
+      <UniqueIdentifier>{bccca3ca-50fd-480b-bc78-d2fcf4ea190a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="프레임워크">
+      <UniqueIdentifier>{5cf5d9cf-26b8-4372-9ccf-edf178918d3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="유틸">
+      <UniqueIdentifier>{81e08fc7-aeeb-4b75-8aec-577d1394a1ee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="유틸\소스">
+      <UniqueIdentifier>{93423881-c37a-4bdb-b9b2-0d182acc7440}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="유틸\헤더">
+      <UniqueIdentifier>{82f056a5-9be9-4f0a-bd7b-bce4cfecdf77}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="플레이어">
+      <UniqueIdentifier>{1eebf32b-0fdd-495c-8c4e-939ce4816731}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="프레임워크\그림자">
+      <UniqueIdentifier>{d3ec3c26-0595-4588-81b9-6fa1fc7b99cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="프레임워크\폰트">
+      <UniqueIdentifier>{5549bae9-9cac-408c-abae-b90db1dcb17a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="네트워크">
+      <UniqueIdentifier>{ecd432d7-acca-4235-9303-babfaed20773}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="프레임워크\모델매니저">
+      <UniqueIdentifier>{be880a0a-ab81-4dd8-8c0c-114782428ee3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="d3dApp.h">
+      <Filter>프레임워크</Filter>
+    </ClInclude>
+    <ClInclude Include="d3dUtil.h">
+      <Filter>유틸\헤더</Filter>
+    </ClInclude>
+    <ClInclude Include="DDSTextureLoader.h">
+      <Filter>유틸\헤더</Filter>
+    </ClInclude>
+    <ClInclude Include="GameTimer.h">
+      <Filter>유틸\헤더</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryGenerator.h">
+      <Filter>유틸\헤더</Filter>
+    </ClInclude>
+    <ClInclude Include="MathHelper.h">
+      <Filter>유틸\헤더</Filter>
+    </ClInclude>
+    <ClInclude Include="UploadBuffer.h">
+      <Filter>유틸\헤더</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameResource.h">
+      <Filter>프레임워크</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>플레이어</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>플레이어</Filter>
+    </ClInclude>
+    <ClInclude Include="ShadowMap.h">
+      <Filter>프레임워크\그림자</Filter>
+    </ClInclude>
+    <ClInclude Include="FontManager.h">
+      <Filter>프레임워크\폰트</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkModule.h">
+      <Filter>네트워크</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelLoader.h">
+      <Filter>프레임워크\모델매니저</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Game.cpp">
+      <Filter>프레임워크</Filter>
+    </ClCompile>
+    <ClCompile Include="d3dApp.cpp">
+      <Filter>프레임워크</Filter>
+    </ClCompile>
+    <ClCompile Include="d3dUtil.cpp">
+      <Filter>유틸\소스</Filter>
+    </ClCompile>
+    <ClCompile Include="DDSTextureLoader.cpp">
+      <Filter>유틸\소스</Filter>
+    </ClCompile>
+    <ClCompile Include="GameTimer.cpp">
+      <Filter>유틸\소스</Filter>
+    </ClCompile>
+    <ClCompile Include="GeometryGenerator.cpp">
+      <Filter>유틸\소스</Filter>
+    </ClCompile>
+    <ClCompile Include="MathHelper.cpp">
+      <Filter>유틸\소스</Filter>
+    </ClCompile>
+    <ClCompile Include="FrameResource.cpp">
+      <Filter>프레임워크</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>플레이어</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>플레이어</Filter>
+    </ClCompile>
+    <ClCompile Include="ShadowMap.cpp">
+      <Filter>프레임워크\그림자</Filter>
+    </ClCompile>
+    <ClCompile Include="FontManager.cpp">
+      <Filter>프레임워크\폰트</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkModule.cpp">
+      <Filter>네트워크</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelLoader.cpp">
+      <Filter>프레임워크\모델매니저</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shader\color.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\LightingUtil.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\DefaultInstancing.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+  </ItemGroup>
+</Project>
