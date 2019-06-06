@@ -147,3 +147,77 @@ vector<mesh> ModelLoader::GetMesh()
 {
 	return m_Meshes;
 }
+
+void ModelLoader::ReadNodeHeirarchy(float AnimationTime, const aiNode * pNode, const XMMATRIX & ParentTransform)
+{
+	string NodeName(pNode->mName.data);
+
+	const aiAnimation* pAnimation = m_pScene->mAnimations[0];
+	
+	XMMATRIX NodeTransformation = XMMATRIX(&pNode->mTransformation.a1);
+
+	const aiNodeAnim* pNodeAnim = FindNodeAnim(pAnimation, NodeName);
+
+	if (pNodeAnim)
+	{
+		aiVector3D Scaling;
+		CalcInterpolatedScaling(Scaling, AnimationTime, pNodeAnim);
+		XMMATRIX ScalingM;
+		ScalingM = XMMatrixScaling(Scaling.x, Scaling.y, Scaling.z);
+
+		aiQuaternion RotationQ;
+		CalcInterpolatedRotation(RotationQ, AnimationTime, pNodeAnim);
+		XMMATRIX RotationM;
+		RotationM = XMMatrixRotationQuaternion(XMVectorSet(RotationQ.x, RotationQ.y, RotationQ.z, RotationQ.w));
+
+		aiVector3D Translation;
+		CalcInterpolatedPosition(Translation, AnimationTime, pNodeAnim);
+		XMMATRIX TranslationM;
+		TranslationM = XMMatrixTranslation(Translation.x, Translation.y, Translation.z);
+
+		NodeTransformation = ScalingM * RotationM * TranslationM;
+		NodeTransformation = XMMatrixTranspose(NodeTransformation);
+	}
+
+	XMMATRIX GlobalTransformation = ParentTransform * NodeTransformation;
+
+	for (auto& p : m_Bones)
+	{
+		if (p.first == pNode->mName.data)
+		{
+			p.second.TransFormation = m_GlobalInverseTransform * GlobalTransformation * p.second.BoneOffset;
+			break;
+		}
+	}
+
+	for (unsigned int i = 0; i < pNode->mNumChildren; ++i) {
+		//°èÃþ±¸Á¶¸¦ ÀÌ·ë. ÀÚ½Ä³ëµå Å½»ö ¹× º¯È¯
+		ReadNodeHeirarchy(AnimationTime, pNode->mChildren[i], GlobalTransformation);
+	}
+
+}
+
+const aiNodeAnim * ModelLoader::FindNodeAnim(const aiAnimation * pAnimaition, const string & NodeName)
+{
+	for (unsigned int i = 0; i < pAnimaition->mNumChannels; ++i)
+	{
+		const aiNodeAnim* pNodeAnim = pAnimaition->mChannels[i];
+
+		if (pNodeAnim->mNodeName.data == NodeName)
+			return pNodeAnim;
+	}
+
+	return nullptr;
+}
+
+void ModelLoader::CalcInterpolatedScaling(aiVector3D & Scaling, float AnimationTime, const aiNodeAnim * pNodeAnim)
+{
+}
+
+void ModelLoader::CalcInterpolatedRotation(aiQuaternion & RotationQ, float AnimationTime, const aiNodeAnim * pNodeAnim)
+{
+}
+
+void ModelLoader::CalcInterpolatedPosition(aiVector3D & Translation, float AnimationTime, const aiNodeAnim * pNodeAnim)
+{
+}

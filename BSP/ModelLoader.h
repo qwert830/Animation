@@ -63,8 +63,14 @@ public:
 
 	vector<mesh> GetMesh();
 
-
 	//애니메이션
+
+	void ReadNodeHeirarchy(float AnimationTime, const aiNode* pNose, const XMMATRIX& ParentTransform);
+	const aiNodeAnim* FindNodeAnim(const aiAnimation* pAnimaition, const string& NodeName);
+
+	void CalcInterpolatedScaling(aiVector3D& Scaling, float AnimationTime, const aiNodeAnim* pNodeAnim);
+	void CalcInterpolatedRotation(aiQuaternion& RotationQ, float AnimationTime, const aiNodeAnim* pNodeAnim);
+	void CalcInterpolatedPosition(aiVector3D& Translation, float AnimationTime, const aiNodeAnim* pNodeAnim);
 
 };
 
