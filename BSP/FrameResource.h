@@ -62,7 +62,7 @@ struct PassConstants
 
 struct AnimationData
 {
-	XMFLOAT4X4 boneData[10][96];
+	XMFLOAT4X4 boneData[96] = { MathHelper::Identity4x4(), };
 };
 
 

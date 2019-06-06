@@ -93,7 +93,11 @@ void ModelLoader::InitBone(unsigned int index, const aiMesh* pMesh)
 			}
 		}
 		m_NumBones++;
+		Bone bData;
+		bData.BoneOffset = XMMATRIX(&bone->mOffsetMatrix.a1);
+		m_Bones.push_back(make_pair(bone->mName.data, bData));
 	}
+	int k = 0;
 }
 
 void ModelLoader::ModelLoad(const std::string & file, bool isStatic)
@@ -118,6 +122,10 @@ void ModelLoader::ModelLoad(const std::string & file, bool isStatic)
 		flag |= aiProcess_PreTransformVertices;			// preTransform Vertices (no bone & animation flag)
 
 	m_pScene = aiImportFile(file.c_str(), flag);
+	auto globalInverseTransform = m_pScene->mRootNode->mTransformation;
+	globalInverseTransform.Inverse();
+
+	m_GlobalInverseTransform = XMMATRIX(&globalInverseTransform.a1);
 
 	if (m_pScene) {
 		m_Meshes.resize(m_pScene->mNumMeshes);
@@ -132,23 +140,10 @@ void ModelLoader::ModelLoad(const std::string & file, bool isStatic)
 				InitBone(i, pMesh);
 			}
 		}
-
-		TestPrint();
 	}
 }
 
-void ModelLoader::TestPrint()
+vector<mesh> ModelLoader::GetMesh()
 {
-	ofstream out;
-	out.open("test.txt");
-	auto data = m_Meshes[0].m_vertices;
-	for (int i = 0; i < m_Meshes[0].m_vertices.size(); ++i)
-	{
-		out.setf(ios::fixed);
-		out.precision(3);
-		out << "i:" << i 
-			<< "\t\tbi1:" << (unsigned int)data[i].BoneIndices[0] << "\t\tbi2:" << (unsigned int)data[i].BoneIndices[1] << "\t\tbi3:" << (unsigned int)data[i].BoneIndices[2]
-			<< "\t\tbw1:" << data[i].BoneWeights.x << "\t\tbw2:" << data[i].BoneWeights.y << "\t\tbw3:" << data[i].BoneWeights.z << endl;
-	}
-	out.close();
+	return m_Meshes;
 }

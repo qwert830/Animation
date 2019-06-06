@@ -235,7 +235,7 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
 
     if(instData.IsDraw < 0)
     {
-        vout.PosW = float4(-10000000, -10000000, 0, 0);
+        vout.PosW = float3(-10000000, -10000000, 0);
 
         return vout;
     }
@@ -273,11 +273,62 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
 
     vout.TexC = mul(texC, matData.MatTransform).xy;
 	
-
     vout.ShadowPosH = mul(posW, gShadowTransform);
 
     vout.IsDraw = instData.IsDraw;
 
+    return vout;
+};
+
+VertexOut PlayerVS(VertexIn vin, uint instanceID : SV_InstanceID)
+{
+    VertexOut vout = (VertexOut) 0.0f;
+	
+    InstanceData instData = gInstanceData[instanceID];
+    float4x4 world = instData.World;
+    float4x4 texTransform = instData.TexTransform;
+    uint matIndex = instData.MaterialIndex;
+    MaterialConstants matData = gMaterialData[0];
+
+    if (instData.IsDraw < 0)
+    {
+        vout.PosW = float3(-100000.0f, -100000.0f, 0.0f);
+
+        return vout;
+    }
+
+    float weights[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    weights[0] = vin.BoneWeights.x;
+    weights[1] = vin.BoneWeights.y;
+    weights[2] = vin.BoneWeights.z;
+    weights[3] = 1.0f - weights[0] - weights[1] - weights[2];
+
+    float3 posL = float3(0.0f, 0.0f, 0.0f);
+    float3 normalL = float3(0.0f, 0.0f, 0.0f);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        posL += weights[i] * mul(float4(vin.PosL.xyz, 1.0f), gBoneTransforms[vin.BoneIndices[i]]).xyz;
+        normalL += weights[i] * mul(vin.NormalL, (float3x3) gBoneTransforms[vin.BoneIndices[i]]).xyz;
+    }
+
+    vin.PosL = float4(posL, 1.0f);
+    vin.NormalL = normalL;
+
+    vout.MatIndex = matIndex;
+    float4 posW = mul(float4(vin.PosL.xyz, 1.0f), world); // ¸ðµ¨ÁÂÇ¥ -> ¿ùµåÁÂÇ¥
+
+    vout.PosW = posW.xyz;
+    vout.PosH = mul(posW, gViewProj); // xyz,1
+
+    vout.NormalW = mul(vin.NormalL, (float3x3) world);
+
+    float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), texTransform);
+  
+    vout.TexC = mul(texC, matData.MatTransform).xy;
+    vout.ShadowPosH = mul(posW, gShadowTransform);
+
+    vout.IsDraw = instData.IsDraw;
     return vout;
 };
 

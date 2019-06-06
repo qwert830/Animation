@@ -83,6 +83,7 @@ private:
 	void UpdateShadowPassCB(const GameTimer& gt);
 	void UpdateShadowTransform(const GameTimer& gt);
 	void UpdateTime(const GameTimer& gt);
+	void UpdateAnimation();
 
 	void OnKeyboardInput(const GameTimer& gt);
 
@@ -156,6 +157,7 @@ private:
 
 	PassConstants mMainPassCB;
 	PassConstants mShadowPassCB;
+	AnimationData mAnimationData;
     XMFLOAT4X4 mWorld = MathHelper::Identity4x4();
 
     float mTheta = 1.5f*XM_PI;
@@ -241,6 +243,9 @@ bool Game::Initialize()
 
 	mPlayer.mCamera.SetPosition(0.0f, 5.0f, -15.0f);
 	
+	for (int j = 0; j < 96; j++)
+		mAnimationData.boneData[j] = MathHelper::Identity4x4();
+
     ThrowIfFailed(mCommandList->Close());
 	ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
 	mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
@@ -284,6 +289,7 @@ void Game::Update(const GameTimer& gt)
 	UpdateShadowTransform(gt);
 	UpdateMainPassCB(gt);
 	UpdateShadowPassCB(gt);
+	UpdateAnimation();
 
 	mPlayer.Update(gt);
 }
@@ -383,12 +389,17 @@ void Game::DeferredDraw(const GameTimer & gt)
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
+
 	//인스턴싱으로 리소스 생성 : ui / 반투명은 따로 그리기
 	mCommandList->SetPipelineState(mPSOs["DeferredResource"].Get()); // 파이프라인 설정
-
 	DrawInstancingRenderItems(mCommandList.Get(), gameRenderItem[OPAQUEITEM]);
-	DrawInstancingRenderItems(mCommandList.Get(), gameRenderItem[PLAYER]);
 	DrawInstancingRenderItems(mCommandList.Get(), gameRenderItem[PLAYERGUN]);
+	
+	auto animData = mCurrFrameResource->AnimData->Resource();
+	mCommandList->SetGraphicsRootConstantBufferView(3, animData->GetGPUVirtualAddress());
+
+	mCommandList->SetPipelineState(mPSOs["DefeerdPlayer"].Get());
+	DrawInstancingRenderItems(mCommandList.Get(), gameRenderItem[PLAYER]);
 
 	mCommandList->SetPipelineState(mPSOs["DeferredTransparentResource"].Get());
 	DrawInstancingRenderItems(mCommandList.Get(), gameRenderItem[BILLBOARDITEM]);
@@ -709,6 +720,15 @@ void Game::UpdateTime(const GameTimer & gt)
 	gameRenderItem[UI][0]->Instances[9].UIUVPos = DirectX::XMFLOAT4(uv.u, uv.v, uv.w, uv.h);
 }
 
+void Game::UpdateAnimation()
+{
+	for (int j = 0; j < 96; j++)
+		mAnimationData.boneData[j] = MathHelper::Identity4x4();
+
+	auto currAnimData = mCurrFrameResource->AnimData.get();
+	currAnimData->CopyData(1, mAnimationData);
+}
+
 void Game::LoadTextures()
 {
 	std::vector<std::string> texNames = 
@@ -952,6 +972,8 @@ void Game::BuildShadersAndInputLayout()
 	mShaders["dVS"] = d3dUtil::CompileShader(L"Shader\\DefaultInstancing.hlsl", nullptr, "DVS", "vs_5_1");
 	mShaders["dPS"] = d3dUtil::CompileShader(L"Shader\\DefaultInstancing.hlsl", nullptr, "DPS", "ps_5_1");
 
+	mShaders["PlayerVS"] = d3dUtil::CompileShader(L"Shader\\DefaultInstancing.hlsl", nullptr, "PlayerVS", "vs_5_1");
+
     mInputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -1020,8 +1042,11 @@ void Game::BuildShapeGeometry()
 	fin.close();
 	// 모델로딩완료
 
+	auto data1 = mModelLoader.GetMesh()[0].m_vertices;
+	auto data1Index = mModelLoader.GetMesh()[0].m_indices;
+
 	// 모델 데이터 입력
-	auto totalVertexCount = (size_t)m_vertexCount + grid.Vertices.size() + uiGrid.Vertices.size() + quad.Vertices.size();
+	auto totalVertexCount = (size_t)m_vertexCount + grid.Vertices.size() + uiGrid.Vertices.size() + quad.Vertices.size() + data1.size();
 	
 	std::vector<Vertex> vertices(totalVertexCount);
 	std::vector<uint16_t> indices;
@@ -1063,7 +1088,16 @@ void Game::BuildShapeGeometry()
 	}
 	indices.insert(indices.end(), quad.Indices32.begin(), quad.Indices32.end());
 
-
+	for (int i = 0; i < data1.size(); ++i, ++k)
+	{
+		vertices[k].Pos = data1[i].Pos;
+		vertices[k].Normal = data1[i].Normal;
+		vertices[k].Tex = data1[i].Tex;
+		vertices[k].BoneWeights = data1[i].BoneWeights;
+		for (int j = 0; j < 4; ++j)
+			vertices[k].BoneIndices[j] = data1[i].BoneIndices[j];
+	}
+	indices.insert(indices.end(), data1Index.begin(), data1Index.end());
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
@@ -1079,6 +1113,9 @@ void Game::BuildShapeGeometry()
 
 	UINT QuadIndexOffset = (UINT)uiGrid.Indices32.size() + uiGridIndexOffset;
 	UINT QuadVertexOffset = (UINT)uiGrid.Vertices.size() + uiGridVertexOffset;
+
+	UINT PlayerIndexOffset = (UINT)quad.Indices32.size() + QuadIndexOffset;
+	UINT PlayerVertexOffset = (UINT)quad.Vertices.size() + QuadVertexOffset;
 
 	auto geo = std::make_unique<MeshGeometry>();
 	geo->Name = "shapeGeo";
@@ -1123,10 +1160,16 @@ void Game::BuildShapeGeometry()
 	QuadSubmesh.StartIndexLocation = QuadIndexOffset;
 	QuadSubmesh.BaseVertexLocation = QuadVertexOffset;
 
+	SubmeshGeometry PlayerSubmesh;
+	PlayerSubmesh.IndexCount = (UINT)data1Index.size();
+	PlayerSubmesh.StartIndexLocation = PlayerIndexOffset;
+	PlayerSubmesh.BaseVertexLocation = PlayerVertexOffset;
+
 	geo->DrawArgs["testModel"] = submesh;
 	geo->DrawArgs["grid"] = gridSubmesh;
 	geo->DrawArgs["uiGrid"] = uiGridSubmesh;
 	geo->DrawArgs["quad"] = QuadSubmesh;
+	geo->DrawArgs["Player"] = PlayerSubmesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
@@ -1238,6 +1281,14 @@ void Game::BuildPSOs()
 	};
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&deferredPsoDesc, IID_PPV_ARGS(&mPSOs["DeferredResource"])));
 
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC playerPsoDesc = deferredPsoDesc;
+	playerPsoDesc.VS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["PlayerVS"]->GetBufferPointer()),
+		mShaders["PlayerVS"]->GetBufferSize()
+	};
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&playerPsoDesc, IID_PPV_ARGS(&mPSOs["DefeerdPlayer"])));
+
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC deferredTransparentPsoDesc = deferredPsoDesc;
 	D3D12_RENDER_TARGET_BLEND_DESC transparencyBlendDesc;
 	transparencyBlendDesc.BlendEnable = true;
@@ -1329,14 +1380,14 @@ void Game::BuildRenderItems()
 	gridRitem->Mat = mMaterials["tile0"].get();
 	gridRitem->Geo = mGeometries["shapeGeo"].get();
 	gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	gridRitem->IndexCount = gridRitem->Geo->DrawArgs["testModel"].IndexCount;
-	gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["testModel"].StartIndexLocation;
-	gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["testModel"].BaseVertexLocation;
+	gridRitem->IndexCount = gridRitem->Geo->DrawArgs["Player"].IndexCount;
+	gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["Player"].StartIndexLocation;
+	gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["Player"].BaseVertexLocation;
 
 	gridRitem->Instances.resize(1);
-	XMStoreFloat4x4(&gridRitem->Instances[0].World, XMMatrixScaling(1.0f, 1.0f, 1.0f)*XMMatrixTranslation(0.0f, 20.0f, 0.0f));
+	XMStoreFloat4x4(&gridRitem->Instances[0].World, XMMatrixScaling(0.1f, 0.1f, 0.1f)*XMMatrixTranslation(0.0f, 0.0f, 200.0f));
 	XMStoreFloat4x4(&gridRitem->Instances[0].TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
-	gridRitem->Instances[0].MaterialIndex = 1;
+	gridRitem->Instances[0].MaterialIndex = 3;
 
 	mInstanceCount.push_back((unsigned int)gridRitem->Instances.size());
 	gameRenderItem[PLAYER].push_back(gridRitem.get());
@@ -1362,7 +1413,7 @@ void Game::BuildRenderItemsNoCharacter()
 	gridRitem->Instances[0].MaterialIndex = 1;
 
 	mInstanceCount.push_back((unsigned int)gridRitem->Instances.size());
-
+	gameRenderItem[OPAQUEITEM].push_back(gridRitem.get());
 	mAllRitems.push_back(std::move(gridRitem));
 
 	auto UIRitem = std::make_unique<RenderItem>();
@@ -1414,9 +1465,6 @@ void Game::BuildRenderItemsNoCharacter()
 
 	mInstanceCount.push_back((unsigned int)UIRitem->Instances.size());
 
-	for (auto& e : mAllRitems)
-		gameRenderItem[OPAQUEITEM].push_back(e.get());
-
 	mAllRitems.push_back(std::move(UIRitem));
 	gameRenderItem[UI].push_back(mAllRitems[mAllRitems.size() - 1].get());
 
@@ -1434,7 +1482,7 @@ void Game::BuildRenderItemsNoCharacter()
 	quadRitem->Instances.resize(1);
 	quadRitem->Instances[0].World = MathHelper::Identity4x4();
 	quadRitem->Instances[0].TexTransform = MathHelper::Identity4x4();
-	quadRitem->Instances[0].MaterialIndex = 0;
+	quadRitem->Instances[0].MaterialIndex = 5;
 	mInstanceCount.push_back((unsigned int)quadRitem->Instances.size());
 
 	gameRenderItem[DEBUG].push_back(quadRitem.get());
@@ -1454,7 +1502,7 @@ void Game::BuildRenderItemsNoCharacter()
 	deferredRitem->Instances.resize(1);
 	deferredRitem->Instances[0].World = MathHelper::Identity4x4();
 	deferredRitem->Instances[0].TexTransform = MathHelper::Identity4x4();
-	deferredRitem->Instances[0].MaterialIndex = 0;
+	deferredRitem->Instances[0].MaterialIndex = 5;
 	mInstanceCount.push_back((unsigned int)deferredRitem->Instances.size());
 
 	gameRenderItem[DEFERRED].push_back(deferredRitem.get());

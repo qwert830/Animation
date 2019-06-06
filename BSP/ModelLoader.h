@@ -13,8 +13,6 @@
 
 #include "FrameResource.h"
 #include "d3dUtil.h"
-#include <fstream>
-#include <iostream>
 
 #pragma comment(lib, "assimp-vc140-mt.lib")
 
@@ -28,8 +26,8 @@ using namespace std;
 		
 		Animation->aiAnimation = Name, channel->aiNodeAnim, Duration, Ticks per second
 			[[aiNodeAnim = Name, RotKey(회전), ScaleKey, PosKey]] / 전부 Time, value값을 가짐
-
 */
+
 struct mesh
 {
 	vector<Vertex> m_vertices;
@@ -38,27 +36,35 @@ struct mesh
 
 struct Bone
 {
-	XMFLOAT4X4 BoneOffset = MathHelper::Identity4x4();
-	XMFLOAT4X4 TransFormation = MathHelper::Identity4x4();
+	XMMATRIX BoneOffset = XMMatrixIdentity();
+	XMMATRIX TransFormation = XMMatrixIdentity();
 };
 
 class ModelLoader
 {
 private:
-	const aiScene*							m_pScene;
-	vector<mesh>							m_Meshes;
+	const aiScene*				m_pScene;
+	vector<mesh>				m_Meshes;
 	vector<pair<string, Bone>>	m_Bones;
 
 	unsigned int m_NumVertices = -1;
 	unsigned int m_NumBones = -1;
 
+	XMMATRIX m_GlobalInverseTransform;
+
 public:
+	//매쉬정보, 본 
 	ModelLoader();
 	~ModelLoader();
 	void InitScene();
 	void InitMesh(unsigned int index, const aiMesh* pMesh);
 	void InitBone(unsigned int index, const aiMesh* pMesh);
 	void ModelLoad(const string& file, bool isStatic);
-	void TestPrint();
+
+	vector<mesh> GetMesh();
+
+
+	//애니메이션
+
 };
 

@@ -25,9 +25,6 @@
 #include "d3dx12.h"
 #include "DDSTextureLoader.h"
 #include "MathHelper.h"
-#include "../BSP/include/fbxsdk.h"
-
-#pragma comment(lib, "libfbxsdk.lib")
 
 extern const int gNumFrameResources;
 
