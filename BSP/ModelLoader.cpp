@@ -212,12 +212,97 @@ const aiNodeAnim * ModelLoader::FindNodeAnim(const aiAnimation * pAnimaition, co
 
 void ModelLoader::CalcInterpolatedScaling(aiVector3D & Scaling, float AnimationTime, const aiNodeAnim * pNodeAnim)
 {
+	if (pNodeAnim->mNumScalingKeys == 1)
+	{
+		Scaling = pNodeAnim->mScalingKeys[0].mValue;
+		return;
+	}
+	unsigned int ScalingIndex = FindScaling(AnimationTime, pNodeAnim);
+	unsigned int NextScalingIndex = ScalingIndex + 1;
+	assert(NextScalingIndex < pNodeAnim->mNumScalingKeys);
+
+	float DeltaTime = pNodeAnim->mScalingKeys[NextScalingIndex].mTime - pNodeAnim->mScalingKeys[ScalingIndex].mTime;
+	//Factor은 0~1 사이값 동일한 애니메이션 시간으로 0이거나 DeltaTime과 동일한 시간이되어 1의 최고값을 가짐 
+	float Factor = (AnimationTime - (float)pNodeAnim->mScalingKeys[ScalingIndex].mTime) / DeltaTime; 
+	const aiVector3D& StartScaling = pNodeAnim->mScalingKeys[ScalingIndex].mValue;
+	const aiVector3D& EndScaling = pNodeAnim->mScalingKeys[NextScalingIndex].mValue;
+	aiVector3D s = EndScaling - StartScaling;
+
+	Scaling = StartScaling + s * Factor;
 }
 
 void ModelLoader::CalcInterpolatedRotation(aiQuaternion & RotationQ, float AnimationTime, const aiNodeAnim * pNodeAnim)
 {
+	if (pNodeAnim->mNumRotationKeys == 1)
+	{
+		RotationQ = pNodeAnim->mRotationKeys[0].mValue;
+		return;
+	}
+	unsigned int RotationIndex = FindRotation(AnimationTime, pNodeAnim);
+	unsigned int NextRotationIndex = RotationIndex + 1;
+	assert(NextRotationIndex < pNodeAnim->mNumRotationKeys);
+
+	float DeltaTime = pNodeAnim->mRotationKeys[NextRotationIndex].mTime - pNodeAnim->mRotationKeys[RotationIndex].mTime;
+	//Factor은 0~1 사이값 동일한 애니메이션 시간으로 0이거나 DeltaTime과 동일한 시간이되어 1의 최고값을 가짐 
+	float Factor = (AnimationTime - (float)pNodeAnim->mRotationKeys[RotationIndex].mTime) / DeltaTime;
+	const aiQuaternion& StartRotationQ = pNodeAnim->mRotationKeys[RotationIndex].mValue;
+	const aiQuaternion& EndRotationQ = pNodeAnim->mRotationKeys[NextRotationIndex].mValue;
+	aiQuaternion::Interpolate(RotationQ, StartRotationQ, EndRotationQ, Factor);
+	RotationQ = RotationQ.Normalize();
 }
 
 void ModelLoader::CalcInterpolatedPosition(aiVector3D & Translation, float AnimationTime, const aiNodeAnim * pNodeAnim)
 {
+	if (pNodeAnim->mNumPositionKeys == 1)
+	{
+		Translation = pNodeAnim->mPositionKeys[0].mValue;
+		return;
+	}
+	unsigned int PositionIndex = FindPosition(AnimationTime, pNodeAnim);
+	unsigned int NextPositionIndex = PositionIndex + 1;
+	assert(NextPositionIndex < pNodeAnim->mNumPositionKeys);
+
+	float DeltaTime = pNodeAnim->mPositionKeys[NextPositionIndex].mTime - pNodeAnim->mPositionKeys[PositionIndex].mTime;
+	//Factor은 0~1 사이값 동일한 애니메이션 시간으로 0이거나 DeltaTime과 동일한 시간이되어 1의 최고값을 가짐 
+	float Factor = (AnimationTime - (float)pNodeAnim->mPositionKeys[PositionIndex].mTime) / DeltaTime;
+	const aiVector3D& StartPosition = pNodeAnim->mPositionKeys[PositionIndex].mValue;
+	const aiVector3D& EndPosition = pNodeAnim->mPositionKeys[NextPositionIndex].mValue;
+	aiVector3D s = EndPosition - StartPosition;
+
+	Translation = StartPosition + s * Factor;
+}
+
+unsigned int ModelLoader::FindScaling(float AnimationTime, const aiNodeAnim * pNodeAnim)
+{
+	for (unsigned int i = 0; i < pNodeAnim->mNumScalingKeys - 1; i++)
+	{
+		// 애니메이션 시간보다 스케일링 키에 시간이 커지는 경우는 다음애니메이션으로 넘어가는 경우
+		// 따라서 i번째가 현재 진행중인 애니메이션
+		if (AnimationTime < (float)pNodeAnim->mScalingKeys[i + 1].mTime)
+			return i;
+	}
+
+	return 0;
+}
+
+unsigned int ModelLoader::FindRotation(float AnimationTime, const aiNodeAnim * pNodeAnim)
+{
+	for (unsigned int i = 0; i < pNodeAnim->mNumRotationKeys - 1; i++)
+	{
+		if (AnimationTime < (float)pNodeAnim->mRotationKeys[i + 1].mTime)
+			return i;
+	}
+
+	return 0;
+}
+
+unsigned int ModelLoader::FindPosition(float AnimationTime, const aiNodeAnim * pNodeAnim)
+{
+	for (unsigned int i = 0; i < pNodeAnim->mNumPositionKeys - 1; i++)
+	{
+		if (AnimationTime < (float)pNodeAnim->mPositionKeys[i + 1].mTime)
+			return i;
+	}
+
+	return 0;
 }

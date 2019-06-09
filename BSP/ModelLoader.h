@@ -72,5 +72,9 @@ public:
 	void CalcInterpolatedRotation(aiQuaternion& RotationQ, float AnimationTime, const aiNodeAnim* pNodeAnim);
 	void CalcInterpolatedPosition(aiVector3D& Translation, float AnimationTime, const aiNodeAnim* pNodeAnim);
 
+	unsigned int FindScaling(float AnimationTime, const aiNodeAnim* pNodeAnim);
+	unsigned int FindRotation(float AnimationTime, const aiNodeAnim* pNodeAnim);
+	unsigned int FindPosition(float AnimationTime, const aiNodeAnim* pNodeAnim);
+
 };
 
