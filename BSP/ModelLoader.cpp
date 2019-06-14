@@ -35,13 +35,9 @@ void ModelLoader::InitMesh(unsigned int index, const aiMesh * pMesh)
 		XMFLOAT2 tex;
 
 		if (pMesh->HasTextureCoords(0))
-
 			tex = XMFLOAT2(&pMesh->mTextureCoords[0][i].x);
-
 		else
-
 			tex = XMFLOAT2(0.0f, 0.0f);
-
 
 		const Vertex data(XMFLOAT4(pos.x, pos.y, pos.z, 1.0f), normal, tex);
 
@@ -52,26 +48,20 @@ void ModelLoader::InitMesh(unsigned int index, const aiMesh * pMesh)
 		const aiFace& face = pMesh->mFaces[i];
 
 		m_Meshes[index].m_indices.push_back(face.mIndices[0]);
-
 		m_Meshes[index].m_indices.push_back(face.mIndices[1]);
-
 		m_Meshes[index].m_indices.push_back(face.mIndices[2]);
 	}
 }
 
 void ModelLoader::InitBone(unsigned int index, const aiMesh* pMesh)
 {
-	for (int i = 0; i < pMesh->mNumBones; ++i)
+	for (unsigned int i = 0; i < pMesh->mNumBones; ++i)
 	{
 		aiBone* bone = pMesh->mBones[i];
 		auto numOfVertex = bone->mNumWeights;
 		for (unsigned int b = 0; b < numOfVertex; ++b)
 		{
 			unsigned int id = bone->mWeights[b].mVertexId;
-			if (id == 0)
-			{
-				cout << "?" << endl;
-			}
 			if (m_Meshes[index].m_vertices[id].BoneWeights.x == 0.0f)
 			{
 				m_Meshes[index].m_vertices[id].BoneWeights.x = bone->mWeights[b].mWeight;
@@ -148,11 +138,45 @@ vector<mesh> ModelLoader::GetMesh()
 	return m_Meshes;
 }
 
-void ModelLoader::ReadNodeHeirarchy(float AnimationTime, const aiNode * pNode, const XMMATRIX & ParentTransform)
+void ModelLoader::InitAnimation()
+{
+	AnimationLoad("Resource//Idle_Rifle.FBX", IDLE);
+	AnimationLoad("Resource//Fire_1Pistol.FBX", FIRE);
+}
+
+void ModelLoader::GetAnimation()
+{
+}
+
+void ModelLoader::AnimationLoad(const string & file, unsigned index)
+{
+	UINT flag = (aiProcessPreset_TargetRealtime_Quality | aiProcess_ConvertToLeftHanded) & ~aiProcess_FindInvalidData;
+	m_pAnimScene[index] = aiImportFile(file.c_str(), flag);
+}
+
+void ModelLoader::BoneTransform(XMFLOAT4X4* Transforms, int index)
+{
+	XMMATRIX Identity;
+	Identity = XMMatrixIdentity();
+
+	float TicksPerSecond = m_pAnimScene[m_AnimationType[index]]->mAnimations[0]->mTicksPerSecond != 0 ?
+		m_pAnimScene[m_AnimationType[index]]->mAnimations[0]->mTicksPerSecond : 25.0f;
+	float TimeInTicks = m_CurrentAnimationTime[index] * TicksPerSecond;
+	float AnimationTime = fmod(TimeInTicks, m_pAnimScene[m_AnimationType[index]]->mAnimations[0]->mDuration);
+
+	ReadNodeHeirarchy(AnimationTime, m_pAnimScene[m_AnimationType[index]]->mRootNode, Identity, index);
+
+	for (unsigned int i = 0; i < m_NumBones; i++)
+	{
+		XMStoreFloat4x4(&Transforms[i], m_Bones[i].second.TransFormation);
+	}
+}
+
+void ModelLoader::ReadNodeHeirarchy(float AnimationTime, const aiNode * pNode, const XMMATRIX & ParentTransform, int index)
 {
 	string NodeName(pNode->mName.data);
 
-	const aiAnimation* pAnimation = m_pScene->mAnimations[0];
+	const aiAnimation* pAnimation = m_pAnimScene[m_AnimationType[index]]->mAnimations[0];
 	
 	XMMATRIX NodeTransformation = XMMATRIX(&pNode->mTransformation.a1);
 
@@ -192,7 +216,7 @@ void ModelLoader::ReadNodeHeirarchy(float AnimationTime, const aiNode * pNode, c
 
 	for (unsigned int i = 0; i < pNode->mNumChildren; ++i) {
 		//계층구조를 이룸. 자식노드 탐색 및 변환
-		ReadNodeHeirarchy(AnimationTime, pNode->mChildren[i], GlobalTransformation);
+		ReadNodeHeirarchy(AnimationTime, pNode->mChildren[i], GlobalTransformation, index);
 	}
 
 }
@@ -221,7 +245,7 @@ void ModelLoader::CalcInterpolatedScaling(aiVector3D & Scaling, float AnimationT
 	unsigned int NextScalingIndex = ScalingIndex + 1;
 	assert(NextScalingIndex < pNodeAnim->mNumScalingKeys);
 
-	float DeltaTime = pNodeAnim->mScalingKeys[NextScalingIndex].mTime - pNodeAnim->mScalingKeys[ScalingIndex].mTime;
+	float DeltaTime = (float)(pNodeAnim->mScalingKeys[NextScalingIndex].mTime - pNodeAnim->mScalingKeys[ScalingIndex].mTime);
 	//Factor은 0~1 사이값 동일한 애니메이션 시간으로 0이거나 DeltaTime과 동일한 시간이되어 1의 최고값을 가짐 
 	float Factor = (AnimationTime - (float)pNodeAnim->mScalingKeys[ScalingIndex].mTime) / DeltaTime; 
 	const aiVector3D& StartScaling = pNodeAnim->mScalingKeys[ScalingIndex].mValue;
@@ -242,7 +266,7 @@ void ModelLoader::CalcInterpolatedRotation(aiQuaternion & RotationQ, float Anima
 	unsigned int NextRotationIndex = RotationIndex + 1;
 	assert(NextRotationIndex < pNodeAnim->mNumRotationKeys);
 
-	float DeltaTime = pNodeAnim->mRotationKeys[NextRotationIndex].mTime - pNodeAnim->mRotationKeys[RotationIndex].mTime;
+	float DeltaTime = (float)(pNodeAnim->mRotationKeys[NextRotationIndex].mTime - pNodeAnim->mRotationKeys[RotationIndex].mTime);
 	//Factor은 0~1 사이값 동일한 애니메이션 시간으로 0이거나 DeltaTime과 동일한 시간이되어 1의 최고값을 가짐 
 	float Factor = (AnimationTime - (float)pNodeAnim->mRotationKeys[RotationIndex].mTime) / DeltaTime;
 	const aiQuaternion& StartRotationQ = pNodeAnim->mRotationKeys[RotationIndex].mValue;
@@ -262,7 +286,7 @@ void ModelLoader::CalcInterpolatedPosition(aiVector3D & Translation, float Anima
 	unsigned int NextPositionIndex = PositionIndex + 1;
 	assert(NextPositionIndex < pNodeAnim->mNumPositionKeys);
 
-	float DeltaTime = pNodeAnim->mPositionKeys[NextPositionIndex].mTime - pNodeAnim->mPositionKeys[PositionIndex].mTime;
+	float DeltaTime = (float)(pNodeAnim->mPositionKeys[NextPositionIndex].mTime - pNodeAnim->mPositionKeys[PositionIndex].mTime);
 	//Factor은 0~1 사이값 동일한 애니메이션 시간으로 0이거나 DeltaTime과 동일한 시간이되어 1의 최고값을 가짐 
 	float Factor = (AnimationTime - (float)pNodeAnim->mPositionKeys[PositionIndex].mTime) / DeltaTime;
 	const aiVector3D& StartPosition = pNodeAnim->mPositionKeys[PositionIndex].mValue;
@@ -305,4 +329,18 @@ unsigned int ModelLoader::FindPosition(float AnimationTime, const aiNodeAnim * p
 	}
 
 	return 0;
+}
+
+void ModelLoader::ChangeAnimation(int index, int AnimationType)
+{
+	m_AnimationType[index] = AnimationType;
+	m_CurrentAnimationTime[index] = 0;
+}
+
+void ModelLoader::UpdateTime(float dt)
+{
+	for (int i = 0; i < 10; ++i)
+	{
+		m_CurrentAnimationTime[i] += dt;
+	}
 }

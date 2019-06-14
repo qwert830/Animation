@@ -66,7 +66,7 @@ cbuffer cbPass : register(b0)
 
 cbuffer cbSkinned : register(b1)
 {
-    float4x4 gBoneTransforms[96];
+    float4x4 gBoneTransforms[10][96];
 };
 
 Texture2D gDiffuseMap[8] : register(t0);
@@ -308,8 +308,8 @@ VertexOut PlayerVS(VertexIn vin, uint instanceID : SV_InstanceID)
 
     for (int i = 0; i < 4; ++i)
     {
-        posL += weights[i] * mul(float4(vin.PosL.xyz, 1.0f), gBoneTransforms[vin.BoneIndices[i]]).xyz;
-        normalL += weights[i] * mul(vin.NormalL, (float3x3) gBoneTransforms[vin.BoneIndices[i]]).xyz;
+        posL += weights[i] * mul(float4(vin.PosL.xyz, 1.0f), gBoneTransforms[instanceID][vin.BoneIndices[i]]).xyz;
+        normalL += weights[i] * mul(vin.NormalL, (float3x3) gBoneTransforms[instanceID][vin.BoneIndices[i]]).xyz;
     }
 
     vin.PosL = float4(posL, 1.0f);

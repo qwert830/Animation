@@ -16,6 +16,13 @@
 
 #pragma comment(lib, "assimp-vc140-mt.lib")
 
+enum AnimationName
+{
+	IDLE = 0, FIRE
+};
+
+
+
 using namespace std;
 
 /*
@@ -44,11 +51,17 @@ class ModelLoader
 {
 private:
 	const aiScene*				m_pScene;
+	const aiScene*				m_pAnimScene[10];
+	
+	unsigned int				m_AnimationType[10] = { IDLE, };
+	float						m_CurrentAnimationTime[10] = { 0, };
+	
 	vector<mesh>				m_Meshes;
 	vector<pair<string, Bone>>	m_Bones;
 
 	unsigned int m_NumVertices = -1;
 	unsigned int m_NumBones = -1;
+
 
 	XMMATRIX m_GlobalInverseTransform;
 
@@ -64,8 +77,13 @@ public:
 	vector<mesh> GetMesh();
 
 	//애니메이션
+	void InitAnimation();
+	void GetAnimation();
 
-	void ReadNodeHeirarchy(float AnimationTime, const aiNode* pNose, const XMMATRIX& ParentTransform);
+	void AnimationLoad(const string& file, unsigned index);
+	void BoneTransform(XMFLOAT4X4* Transforms, int index);
+
+	void ReadNodeHeirarchy(float AnimationTime, const aiNode* pNose, const XMMATRIX& ParentTransform, int AnimationType);
 	const aiNodeAnim* FindNodeAnim(const aiAnimation* pAnimaition, const string& NodeName);
 
 	void CalcInterpolatedScaling(aiVector3D& Scaling, float AnimationTime, const aiNodeAnim* pNodeAnim);
@@ -76,5 +94,11 @@ public:
 	unsigned int FindRotation(float AnimationTime, const aiNodeAnim* pNodeAnim);
 	unsigned int FindPosition(float AnimationTime, const aiNodeAnim* pNodeAnim);
 
+	//애니메이션 설정 및 업데이트
+
+	void ChangeAnimation(int index, int AnimationType);
+	void UpdateTime(float dt);
+
 };
+
 

@@ -27,6 +27,8 @@ using namespace DirectX::PackedVector;
 
 int const gNumFrameResources = 3;
 
+float test;
+
 struct RenderItem
 {
 	RenderItem() = default;
@@ -83,7 +85,7 @@ private:
 	void UpdateShadowPassCB(const GameTimer& gt);
 	void UpdateShadowTransform(const GameTimer& gt);
 	void UpdateTime(const GameTimer& gt);
-	void UpdateAnimation();
+	void UpdateAnimation(const GameTimer & gt);
 
 	void OnKeyboardInput(const GameTimer& gt);
 
@@ -227,7 +229,6 @@ bool Game::Initialize()
 	mShadowMap = std::make_unique<ShadowMap>(md3dDevice.Get(), 2048, 2048);
 	bool h;
 	h = mFontManager.InitFont();
-	mModelLoader.ModelLoad("Resource//PlayerChar.fbx", false);
 
 	LoadTextures();
 	BuildDescriptorHeaps();
@@ -241,11 +242,9 @@ bool Game::Initialize()
 	BuildPlayerData();
     BuildPSOs();
 
+	mModelLoader.InitAnimation();
 	mPlayer.mCamera.SetPosition(0.0f, 5.0f, -15.0f);
 	
-	for (int j = 0; j < 96; j++)
-		mAnimationData.boneData[j] = MathHelper::Identity4x4();
-
     ThrowIfFailed(mCommandList->Close());
 	ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
 	mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
@@ -289,7 +288,7 @@ void Game::Update(const GameTimer& gt)
 	UpdateShadowTransform(gt);
 	UpdateMainPassCB(gt);
 	UpdateShadowPassCB(gt);
-	UpdateAnimation();
+	UpdateAnimation(gt);
 
 	mPlayer.Update(gt);
 }
@@ -463,6 +462,14 @@ void Game::OnMouseMove(WPARAM btnState, int x, int y)
 void Game::OnKeyboardInput(const GameTimer& gt)
 {
 	mPlayer.PlayerKeyBoardInput(gt);
+	if (GetAsyncKeyState('0') & 0x8000)
+	{
+		mModelLoader.ChangeAnimation(0, 0);
+	}
+	if (GetAsyncKeyState('1') & 0x8000)
+	{
+		mModelLoader.ChangeAnimation(0, 1);
+	}
 }
 
 void Game::UpdateObjectCBs(const GameTimer& gt)
@@ -720,13 +727,14 @@ void Game::UpdateTime(const GameTimer & gt)
 	gameRenderItem[UI][0]->Instances[9].UIUVPos = DirectX::XMFLOAT4(uv.u, uv.v, uv.w, uv.h);
 }
 
-void Game::UpdateAnimation()
+void Game::UpdateAnimation(const GameTimer & gt)
 {
-	for (int j = 0; j < 96; j++)
-		mAnimationData.boneData[j] = MathHelper::Identity4x4();
+	mModelLoader.BoneTransform(&mAnimationData.boneData[0][0], 0);
 
 	auto currAnimData = mCurrFrameResource->AnimData.get();
-	currAnimData->CopyData(1, mAnimationData);
+	currAnimData->CopyData(0, mAnimationData);
+
+	mModelLoader.UpdateTime(gt.DeltaTime());
 }
 
 void Game::LoadTextures()
@@ -1042,6 +1050,7 @@ void Game::BuildShapeGeometry()
 	fin.close();
 	// 모델로딩완료
 
+	mModelLoader.ModelLoad("Resource//PlayerChar.fbx", false);
 	auto data1 = mModelLoader.GetMesh()[0].m_vertices;
 	auto data1Index = mModelLoader.GetMesh()[0].m_indices;
 
@@ -1385,7 +1394,7 @@ void Game::BuildRenderItems()
 	gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["Player"].BaseVertexLocation;
 
 	gridRitem->Instances.resize(1);
-	XMStoreFloat4x4(&gridRitem->Instances[0].World, XMMatrixScaling(0.1f, 0.1f, 0.1f)*XMMatrixTranslation(0.0f, 0.0f, 200.0f));
+	XMStoreFloat4x4(&gridRitem->Instances[0].World, XMMatrixScaling(0.1f, 0.1f, 0.1f)*XMMatrixTranslation(0.0f, 0.0f, 10.0f));
 	XMStoreFloat4x4(&gridRitem->Instances[0].TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	gridRitem->Instances[0].MaterialIndex = 3;
 
